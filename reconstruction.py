@@ -47,7 +47,7 @@ batch = dataset[0:image_num]["images"]
 sample_images = torch.stack(batch, dim=0).to("cuda")  # (4, 3, H, W)
 
 # 加噪
-t = 500
+t = 999
 timesteps = torch.tensor([t], dtype=torch.long).repeat(len(sample_images)).to("cuda")
 noise = torch.randn_like(sample_images)
 noisy_images = scheduler.add_noise(sample_images, noise, timesteps)
@@ -91,12 +91,12 @@ for i in range(len(sample_images)):
     plt.axis("off")
 
     plt.subplot(len(sample_images), 3, 3 * i + 3)
-    plt.title(f"Reconstructed\nPSNR: {psnr:.2f}dB")
+    plt.title(f"MSE:{mse:.4f}\nPSNR: {psnr:.2f}dB")
     plt.imshow(recon)
     plt.axis("off")
 
 plt.tight_layout()
-plt.savefig("images/Reconstruction_batch.jpg")
+plt.savefig("images/Reconstruction_batch_"+str(t)+".jpg")
 
 # 打印误差信息
 for i, (m, p) in enumerate(zip(mse_list, psnr_list)):
