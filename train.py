@@ -22,7 +22,7 @@ class TrainingConfig:
     learning_rate = 1e-4
     lr_warmup_steps = 500
     save_image_epochs = 10
-    save_model_epochs = 30
+    save_model_epochs = 10
     mixed_precision = 'fp16'  # `no` for float32, `fp16` for automatic mixed precision
     output_dir = 'diffusion-test-01'  # the model namy locally and on the HF Hub
 
@@ -78,7 +78,7 @@ model = UNet2DModel(
 )
 
 # NOISE
-noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
+noise_scheduler = DDPMScheduler(num_train_timesteps=200)
 
 # TRAIN
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)

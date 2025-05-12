@@ -8,7 +8,7 @@ from draw_loss import plot_loss_curve
 def test01(model_name = "./diffusion-test", scheduler_name = "./diffusion-test", image_nums = 4):
     scheduler = DDPMScheduler.from_pretrained(scheduler_name, use_safetensors=False )
     model = UNet2DModel.from_pretrained(model_name, use_safetensors=True).to("cuda")
-    scheduler.set_timesteps(1000)
+    scheduler.set_timesteps(500)
     sample_size = model.config.sample_size
     
     for image_num in range(image_nums):
@@ -41,7 +41,7 @@ def print_directory_tree(root_dir, indent=""):
             print(f"{indent}├── {item}")
 
 if __name__ == '__main__':
-    # test01("diffusion-test/unet", "diffusion-test/scheduler", image_nums=4)
+    test01("diffusion-test/unet", "diffusion-test/scheduler", image_nums=4)
     # plot_loss_curve("loss.csv", smoothing_type='ema', alpha=0.5, save_path="")
-    print_directory_tree("./03-Diffsion")
+    # print_directory_tree("diffusion-test")
     pass
