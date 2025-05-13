@@ -9,6 +9,7 @@ import numpy as np
 import math
 
 def denorm(tensor):
+    # [-1, 1] => [0, 1]
     return (tensor.clamp(-1, 1) + 1) / 2
 
 def compute_psnr(img1, img2):
@@ -17,18 +18,15 @@ def compute_psnr(img1, img2):
         return float('inf')
     return 20 * math.log10(1.0 / math.sqrt(mse))
 
-# 模型路径
 model_name = "diffusion-test/unet"
 scheduler_name = "diffusion-test/scheduler"
 
-# 加载模型和调度器
 model = UNet2DModel.from_pretrained(model_name, use_safetensors=True).to("cuda")
 scheduler = DDPMScheduler.from_pretrained(scheduler_name, use_safetensors=False)
 scheduler.set_timesteps(1000)
 
 sample_size = model.config.sample_size
 
-# 加载并预处理数据
 dataset_name = "../data/celeba-hq-256x256"
 dataset = load_dataset(dataset_name, split="validation")
 
@@ -41,18 +39,17 @@ def transform(examples):
     return {"images": images}
 dataset.set_transform(transform)
 
-# 一次取4张图像
 image_num = 4
 batch = dataset[0:image_num]["images"]
-sample_images = torch.stack(batch, dim=0).to("cuda")  # (4, 3, H, W)
+sample_images = torch.stack(batch, dim=0).to("cuda")
 
-# 加噪
+# add_noise
 t = 999
 timesteps = torch.tensor([t], dtype=torch.long).repeat(len(sample_images)).to("cuda")
 noise = torch.randn_like(sample_images)
 noisy_images = scheduler.add_noise(sample_images, noise, timesteps)
 
-# 反扩散恢复图像（逐张处理）
+# reconstruction
 reconstructed_images = []
 reverse_timesteps = scheduler.timesteps[scheduler.timesteps <= t]
 for i in range(len(sample_images)):
@@ -65,7 +62,7 @@ for i in range(len(sample_images)):
 
 reconstructed_images = torch.stack(reconstructed_images, dim=0)
 
-# 可视化+误差计算
+# calc loss
 mse_list = []
 psnr_list = []
 
@@ -98,6 +95,5 @@ for i in range(len(sample_images)):
 plt.tight_layout()
 plt.savefig("images/Reconstruction_batch_"+str(t)+".jpg")
 
-# 打印误差信息
 for i, (m, p) in enumerate(zip(mse_list, psnr_list)):
     print(f"Image {i+1}: MSE={m:.6f}, PSNR={p:.2f}dB")

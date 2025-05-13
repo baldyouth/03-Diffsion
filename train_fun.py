@@ -22,6 +22,7 @@ def evaluate(config, epoch, pipeline):
     images = pipeline(
         batch_size = config.eval_batch_size, 
         generator=torch.manual_seed(config.seed),
+        num_inference_steps = config.steps
     ).images
 
     image_grid = make_grid(images, rows=4, cols=4)
@@ -31,9 +32,8 @@ def evaluate(config, epoch, pipeline):
     image_grid.save(f"{test_dir}/{epoch:04d}.png")
 
 
-
 def train_loop(config, model, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
-    # Initialize accelerator and tensorboard logging
+    # Initialize accelerator & tensorboard logging
     logging_dir = os.path.join(config.output_dir, "logs")
     accelerator_project_config = ProjectConfiguration(project_dir=config.output_dir, logging_dir=logging_dir)
     accelerator = Accelerator(
@@ -70,8 +70,7 @@ def train_loop(config, model, noise_scheduler, optimizer, train_dataloader, lr_s
             # Sample a random timestep for each image
             timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
 
-            # Add noise to the clean images according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
+            # Add noise (forward diffusion process)
             noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
             
             with accelerator.accumulate(model):
@@ -91,7 +90,7 @@ def train_loop(config, model, noise_scheduler, optimizer, train_dataloader, lr_s
             accelerator.log(logs, step=global_step)
             global_step += 1
 
-        # After each epoch you optionally sample some demo images with evaluate() and save the model
+        # evaluate & save
         if accelerator.is_main_process:
             pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model), scheduler=noise_scheduler)
 

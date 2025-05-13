@@ -5,10 +5,7 @@ from datasets import load_dataset
 from torchvision import transforms
 from diffusers import UNet2DModel, DDPMScheduler
 from diffusers.optimization import get_cosine_schedule_with_warmup
-
-from util import simulate_noise_animation
 from train_fun import train_loop
-
 import time
 
 # CONFIG
@@ -25,6 +22,8 @@ class TrainingConfig:
     save_model_epochs = 10
     mixed_precision = 'fp16'  # `no` for float32, `fp16` for automatic mixed precision
     output_dir = 'diffusion-test-01'  # the model namy locally and on the HF Hub
+
+    steps = 200
 
     push_to_hub = False  # whether to upload the saved model to the HF Hub
     hub_private_repo = False  
@@ -78,7 +77,7 @@ model = UNet2DModel(
 )
 
 # NOISE
-noise_scheduler = DDPMScheduler(num_train_timesteps=200)
+noise_scheduler = DDPMScheduler(num_train_timesteps=config.steps)
 
 # TRAIN
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
