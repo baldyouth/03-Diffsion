@@ -23,7 +23,6 @@ scheduler_name = "diffusion-test/scheduler"
 
 model = UNet2DModel.from_pretrained(model_name, use_safetensors=True).to("cuda")
 scheduler = DDPMScheduler.from_pretrained(scheduler_name, use_safetensors=False)
-scheduler.set_timesteps(1000)
 
 sample_size = model.config.sample_size
 
@@ -39,28 +38,37 @@ def transform(examples):
     return {"images": images}
 dataset.set_transform(transform)
 
-image_num = 4
+image_num = 2
 batch = dataset[0:image_num]["images"]
 sample_images = torch.stack(batch, dim=0).to("cuda")
 
 # add_noise
-t = 999
-timesteps = torch.tensor([t], dtype=torch.long).repeat(len(sample_images)).to("cuda")
-noise = torch.randn_like(sample_images)
+T = 500
+scheduler.set_timesteps(T)
+noise = torch.randn(sample_images.shape).to("cuda")
+timesteps = torch.LongTensor([T]).to("cuda")
 noisy_images = scheduler.add_noise(sample_images, noise, timesteps)
 
 # reconstruction
-reconstructed_images = []
-reverse_timesteps = scheduler.timesteps[scheduler.timesteps <= t]
-for i in range(len(sample_images)):
-    input_i = noisy_images[i:i+1]
-    for timestep in reverse_timesteps:
-        with torch.no_grad():
-            noisy_residual = model(input_i, timestep).sample
-            input_i = scheduler.step(noisy_residual, timestep, input_i).prev_sample
-    reconstructed_images.append(input_i.squeeze(0).detach())
+reverse_timesteps = scheduler.timesteps[scheduler.timesteps <= T]
+input_images = noisy_images.clone()
+for timestep in reverse_timesteps:
+    with torch.no_grad():
+        t_batch = torch.full((input_images.shape[0],), timestep, device="cuda", dtype=torch.long)
+        noise_pred = model(input_images, t_batch).sample
+        input_images = scheduler.step(noise_pred, timestep, input_images).prev_sample
+reconstructed_images = input_images
 
-reconstructed_images = torch.stack(reconstructed_images, dim=0)
+# reconstructed_images = []
+# for i in range(len(sample_images)):
+#     input_i = noisy_images[i:i+1]
+#     for timestep in reverse_timesteps:
+#         with torch.no_grad():
+#             noisy_residual = model(input_i, timestep).sample
+#             input_i = scheduler.step(noisy_residual, timestep, input_i).prev_sample
+#     reconstructed_images.append(input_i.squeeze(0).detach())
+
+# reconstructed_images = torch.stack(reconstructed_images, dim=0)
 
 # calc loss
 mse_list = []
@@ -83,7 +91,7 @@ for i in range(len(sample_images)):
     plt.axis("off")
 
     plt.subplot(len(sample_images), 3, 3 * i + 2)
-    plt.title(f"Noisy t={t}")
+    plt.title(f"Noisy t={T}")
     plt.imshow(noisy)
     plt.axis("off")
 
@@ -93,7 +101,7 @@ for i in range(len(sample_images)):
     plt.axis("off")
 
 plt.tight_layout()
-plt.savefig("images/Reconstruction_batch_"+str(t)+".jpg")
+plt.savefig("images/Reconstruction.jpg")
 
 for i, (m, p) in enumerate(zip(mse_list, psnr_list)):
     print(f"Image {i+1}: MSE={m:.6f}, PSNR={p:.2f}dB")

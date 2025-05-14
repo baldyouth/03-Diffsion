@@ -9,6 +9,7 @@ def infrence(
     scheduler = DDPMScheduler.from_pretrained(scheduler_name, use_safetensors=False )
     model = UNet2DModel.from_pretrained(model_name, use_safetensors=True).to("cuda")
     scheduler.set_timesteps(500)
+    # print(scheduler.timesteps, len(scheduler.timesteps))
     sample_size = model.config.sample_size
     
     for image_num in range(image_nums):
@@ -23,7 +24,7 @@ def infrence(
         image = (input / 2 + 0.5).clamp(0, 1)
         image = image.cpu().permute(0, 2, 3, 1).numpy()[0]
         image = Image.fromarray((image * 255).round().astype("uint8"))
-        image.save('./images/image_'+str(image_num+1)+'.png')
+        image.save('./images/image_'+str(scheduler.config.num_train_timesteps)+'_'+str(image_num+1)+'.png')
 
 # def test02():
 #     pipe = DiffusionPipeline.from_pretrained("./ddpm-cat-256")
@@ -31,5 +32,5 @@ def infrence(
 #     image.save("./images/generated_image.png")
 
 if __name__ == '__main__':
-    infrence("diffusion-test/unet", "diffusion-test/scheduler", image_nums=4)
+    infrence("diffusion-test/unet", "diffusion-test/scheduler", image_nums=1)
     pass
